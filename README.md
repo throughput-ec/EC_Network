@@ -2,6 +2,8 @@
 
 This repository is used to build and analyze a large graph database (using neo4j). The intent is to use this database for analysis to examine the impact of EarthCube on investigator networks.  There are two components.  One to build the database, and one to analyze the constructed database.  See the Details below for more information.
 
+Critically, as part of the development process we've placed the initial build of the award within a docker container.  This container was used to give us the ability to develop this workflow independently over multiple systems.  As this project matures the database will be placed directly into the main Throughput database.
+
 ## Development
 
   * Simon Goring - University of Wisconsin - Madison
@@ -12,6 +14,18 @@ This repository is used to build and analyze a large graph database (using neo4j
 I welcome contributions from developers, or non-developers.  Please feel free to raise issues or contribute code and text.  Please do so as a Pull Request.
 
 # Details
+
+## Building the Docker Container
+
+The docker container is intended for use with `docker-compose` and is described in the [`docker-compose.yaml`](https://github.com/throughput-ec/EC_Network/blob/master/docker-compose.yaml) file.  This is a pretty bare-bones docker container, only running neo4j.  On the Cyverse branch of the repository the docker file points to the `awarddb` folder.  The location will vary based on the local directory structure.
+
+We obtain the `Dockerfile` from the [`neo4j` docker repositories](https://github.com/neo4j/docker-neo4j-publish/blob/9a175bdb484967c609c5c369256b866a577f86b3/3.3.1/community/Dockerfile) and place it into the root directory.
+
+I start the docker container in the background using:
+
+```
+docker-compose up -d
+```
 
 ## Obtaining the Data
 
