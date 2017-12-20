@@ -122,11 +122,13 @@ for(i in 1:file_length) {
   
   cat(paste0("\nUnzipped ",files[i],", a total of ", length(xmls), " files to be added.\n"))
 
+  cat("  * New transaction started\n")
+
   tx <- newTransaction(graph)
 
   for(j in 1:length(xmls)) {
     
-    cat(paste0("  * Opening ",xmls[j],".\n"))
+    cat(paste0("    * Opening ",xmls[j],".\n"))
 
     parse_df <- try(bind_to_file(xmls[j]))
     
@@ -182,8 +184,9 @@ for(i in 1:file_length) {
     cat(paste0(j,','))
 
     if(j %% 20 == 0 | j == length(xmls)) {
-      cat("\nThe zip file ", files[i], " has ", length(xmls), "files.  We're at ", j, ".\n")
       commit(tx)
+      cat("  * Commit added, opening new transaction.\n")
+      tx <- newTransaction(graph)
     }
     
   }
