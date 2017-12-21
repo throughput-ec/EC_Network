@@ -116,18 +116,19 @@ query <- readr::read_file('cql_folder/parameterized.cql')
 
 for(i in 1:file_length) {
 
+  unlink(list.files('data/input/awards/unzipped/', full.names=TRUE))
+
   unzip(files[i], exdir = 'data/input/awards/unzipped')
   
   xmls <- list.files('data/input/awards/unzipped', full.names = TRUE)
   
   cat(paste0("\nUnzipped ",files[i],", a total of ", length(xmls), " files to be added.\n"))
 
-  cat("  * New transaction started\n")
-
-  tx <- newTransaction(graph)
-
   for(j in 1:length(xmls)) {
     
+    cat("  * New transaction started\n")
+    tx <- newTransaction(graph)
+  
     cat(paste0("    * Opening ",xmls[j],".\n"))
 
     parse_df <- try(bind_to_file(xmls[j]))
@@ -142,6 +143,8 @@ for(i in 1:file_length) {
         sapply(., as.character) %>% 
         as.list()
     
+      cat("      * Row",k,"of",nrow(parse_df),"\n")
+
       if (runlist$InvestigatorEmailAddress == "None") {
         runlist$InvestigatorEmailAddress <- paste0(toupper(runlist$InvestigatorFirstName),
                                                    "_",
@@ -178,17 +181,11 @@ for(i in 1:file_length) {
       }
         
       appendCypher(tx, query, runlist)
-    
-    }
-    
-    cat(paste0(j,','))
-
-    if(j %% 20 == 0 | j == length(xmls)) {
       commit(tx)
       cat("  * Commit added, opening new transaction.\n")
-      tx <- newTransaction(graph)
+
     }
-    
+      
   }
   
 }
