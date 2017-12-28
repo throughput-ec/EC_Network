@@ -2,7 +2,7 @@ library(RNeo4j)
 require(dplyr)
 
 bind_to_file <- function(x) {
-  
+    
   is.NullOb <- function(x) (is.null(x) | length(x) == 0) | all(sapply(x, is.null))
   
   ## Recursively step down into list, removing all such objects 
@@ -114,78 +114,85 @@ graph <- startGraph("http://localhost:7474/db/data/", username = awardpw[1], pas
 
 query <- readr::read_file('cql_folder/parameterized.cql')
 
+xml_list <- paste0('data/input/awards/unzipped/', cypherToList(graph, "MATCH (n:Award) RETURN DISTINCT n.AwardID") %>% unlist, '.xml')
+
 for(i in 1:file_length) {
+
+  xml_list <- paste0('data/input/awards/unzipped/', cypherToList(graph, "MATCH (n:Award) RETURN DISTINCT n.AwardID") %>% unlist, '.xml')
 
   unlink(list.files('data/input/awards/unzipped/', full.names=TRUE))
 
   unzip(files[i], exdir = 'data/input/awards/unzipped')
   
-  xmls <- list.files('data/input/awards/unzipped', full.names = TRUE)
+  xmls <- list.files('data/input/awards/unzipped', full.names = TRUE, pattern = "xml$")
   
+  xmls <- xmls[!xmls %in% xml_list]
+
   cat(paste0("\nUnzipped ",files[i],", a total of ", length(xmls), " files to be added.\n"))
-
-  for(j in 1:length(xmls)) {
-    
-    cat("  * New transaction started\n")
-    tx <- newTransaction(graph)
   
-    cat(paste0("    * Opening ",xmls[j],".\n"))
-
-    parse_df <- try(bind_to_file(xmls[j]))
+  if (length(xmls) > 0) {
+    for(j in 1:length(xmls)) {
     
-    parse_df[is.na(parse_df)] <- "None"
-    
-    colnames(parse_df) <- gsub("\\.", "", colnames(parse_df))
+        cat("  * New transaction started\n")
+  
+        cat(paste0("    * Opening ",xmls[j],".\n"))
 
-    for (k in 1:nrow(parse_df)) {
-      
-      runlist <- as.list(parse_df[k,]) %>% 
-        sapply(., as.character) %>% 
-        as.list()
+        parse_df <- try(bind_to_file(xmls[j]))
     
-      cat("      * Row",k,"of",nrow(parse_df),"\n")
+        parse_df[is.na(parse_df)] <- "None"
+    
+        colnames(parse_df) <- gsub("\\.", "", colnames(parse_df))
 
-      if (runlist$InvestigatorEmailAddress == "None") {
-        runlist$InvestigatorEmailAddress <- paste0(toupper(runlist$InvestigatorFirstName),
-                                                   "_",
-                                                   toupper(runlist$InvestigatorLastName))
-      }
+        for (k in 1:nrow(parse_df)) {
       
-      datecheck <- function(x) {
-        is.null(x) | 
-          is.na(x) | x %in% c("NA", "None")
-      }
+          runlist <- as.list(parse_df[k,]) %>% 
+            sapply(., as.character) %>% 
+            as.list()
+    
+          cat("      * Row",k,"of",nrow(parse_df),"\n")
+
+          if (runlist$InvestigatorEmailAddress == "None") {
+            runlist$InvestigatorEmailAddress <- paste0(toupper(runlist$InvestigatorFirstName),
+                                                       "_",
+                                                       toupper(runlist$InvestigatorLastName))
+          }
       
-      if (datecheck(runlist$InvestigatorStartDate)) {
-        runlist$InvestigatorStartDate <- "0/0/0"
-      }
+          datecheck <- function(x) {
+            is.null(x) | 
+              is.na(x) | x %in% c("NA", "None")
+          }
       
-      if (datecheck(runlist$InvestigatorEndDate)) {
-        runlist$InvestigatorEndDate <- "0/0/0"
-      }
+          if (datecheck(runlist$InvestigatorStartDate)) {
+            runlist$InvestigatorStartDate <- "0/0/0"
+          }
       
-      if (datecheck(runlist$MinAmdLetterDate)) {
-        runlist$MinAmdLetterDate <- "0/0/0"
-      }
+          if (datecheck(runlist$InvestigatorEndDate)) {
+            runlist$InvestigatorEndDate <- "0/0/0"
+          }
       
-      if (datecheck(runlist$MaxAmdLetterDate)) {
-        runlist$MaxAmdLetterDate <- "0/0/0"
-      }
+          if (datecheck(runlist$MinAmdLetterDate)) {
+            runlist$MinAmdLetterDate <- "0/0/0"
+          }
       
-      if (datecheck(runlist$AwardExpirationDate)) {
-        runlist$MinAmdLetterDate <- "0/0/0"
-      }
+          if (datecheck(runlist$MaxAmdLetterDate)) {
+            runlist$MaxAmdLetterDate <- "0/0/0"
+          }
       
-      if (datecheck(runlist$AwardEffectiveDate)) {
-        runlist$MaxAmdLetterDate <- "0/0/0"
-      }
+          if (datecheck(runlist$AwardExpirationDate)) {
+            runlist$MinAmdLetterDate <- "0/0/0"
+          }
+      
+          if (datecheck(runlist$AwardEffectiveDate)) {
+            runlist$MaxAmdLetterDate <- "0/0/0"
+          }
         
-      appendCypher(tx, query, runlist)
-      commit(tx)
-      cat("  * Commit added, opening new transaction.\n")
-
+          tx <- newTransaction(graph)
+          appendCypher(tx, query, runlist)
+          commit(tx)
+          xml_list <- c(xml_list, xmls[j])
+          cat("  * Commit added, opening new transaction.\n")
+       
+      }
     }
-      
   }
-  
 }
